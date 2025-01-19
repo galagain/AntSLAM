@@ -11,8 +11,15 @@ set(CMAKE_CXX_STANDARD_REQUIRED True)
 # Include header files from the include directory
 include_directories(${CMAKE_SOURCE_DIR}/include)
 
+# Find the system OpenCV package
+find_package(OpenCV REQUIRED)
+include_directories(${OpenCV_INCLUDE_DIRS})
+
 # Add all source files from the src directory
 file(GLOB_RECURSE SOURCES ${CMAKE_SOURCE_DIR}/src/*.cpp)
 
 # Create the executable
 add_executable(${PROJECT_NAME} ${SOURCES})
+
+# Link OpenCV to the executable
+target_link_libraries(${PROJECT_NAME} ${OPENGL_LIBRARIES} ${OpenCV_LIBS})
