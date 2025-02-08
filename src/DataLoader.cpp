@@ -3,6 +3,8 @@
 #include <iostream>
 #include <algorithm>
 #include <opencv2/opencv.hpp>
+#include <fstream> // For reading files
+#include <sstream> // For parsing lines
 
 // Static member for image extensions
 const std::vector<std::string> DataLoader::imageExtensions = {
@@ -59,4 +61,44 @@ cv::Mat DataLoader::loadImage(const std::string &imagePath) const
     }
 
     return image;
+}
+
+// Method to load ground poses (KITTI style) in 3D
+std::vector<cv::Point3f> DataLoader::loadGroundPoses3D(const std::string &filePath) const
+{
+    std::vector<cv::Point3f> poses3D;
+
+    std::ifstream infile(filePath);
+    if (!infile.is_open())
+    {
+        std::cerr << "Error: Cannot open poses file " << filePath << std::endl;
+        return poses3D;
+    }
+
+    std::string line;
+    while (std::getline(infile, line))
+    {
+        std::istringstream iss(line);
+        double val;
+        double tx = 0, ty = 0, tz = 0;
+
+        // Each line has 12 values describing a 3x4 matrix: R(3x3) + t(3x1)
+        // Indices 3, 7, and 11 correspond to tx, ty, tz.
+        for (int i = 0; i < 12; i++)
+        {
+            iss >> val;
+            if (i == 3)
+                tx = val;
+            if (i == 7)
+                ty = val;
+            if (i == 11)
+                tz = val;
+        }
+
+        poses3D.push_back(cv::Point3f(static_cast<float>(tx),
+                                      static_cast<float>(ty),
+                                      static_cast<float>(tz)));
+    }
+
+    return poses3D;
 }

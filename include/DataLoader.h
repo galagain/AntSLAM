@@ -17,6 +17,9 @@ public:
     // Method to load an image from a path
     cv::Mat loadImage(const std::string &imagePath) const;
 
+    // Method to load ground poses (KITTI style) in 3D
+    std::vector<cv::Point3f> loadGroundPoses3D(const std::string &filePath) const;
+
 private:
     // Valid image extensions
     static const std::vector<std::string> imageExtensions;
