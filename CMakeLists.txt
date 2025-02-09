@@ -15,6 +15,27 @@ include_directories(${CMAKE_SOURCE_DIR}/include)
 find_package(OpenCV REQUIRED)
 include_directories(${OpenCV_INCLUDE_DIRS})
 
+# Add FreeGLUT as a submodule
+set(FREEGLUT_DIR ${CMAKE_SOURCE_DIR}/external/freeglut)
+
+# Check if FreeGLUT exists in the submodules
+if(NOT EXISTS ${FREEGLUT_DIR}/CMakeLists.txt)
+    message(FATAL_ERROR "FreeGLUT submodule not found! Make sure to run `git submodule update --init --recursive`.")
+endif()
+
+# Include FreeGLUT
+add_subdirectory(${FREEGLUT_DIR})
+include_directories(${FREEGLUT_DIR}/include)
+
+# Find OpenGL
+find_package(OpenGL REQUIRED)
+if (OPENGL_FOUND)
+    include_directories(${OPENGL_INCLUDE_DIRS})
+    link_libraries(${OPENGL_LIBRARIES})
+else()
+    message(FATAL_ERROR "OpenGL not found!")
+endif()
+
 # Add all source files from the src directory excluding main.cpp
 file(GLOB_RECURSE SOURCES ${CMAKE_SOURCE_DIR}/src/*.cpp)
 list(REMOVE_ITEM SOURCES ${CMAKE_SOURCE_DIR}/src/main.cpp)
@@ -22,9 +43,8 @@ list(REMOVE_ITEM SOURCES ${CMAKE_SOURCE_DIR}/src/main.cpp)
 # Create the main executable
 add_executable(${PROJECT_NAME} ${SOURCES} ${CMAKE_SOURCE_DIR}/src/main.cpp)
 
-# Link OpenCV to the main executable
-target_link_libraries(${PROJECT_NAME} ${OPENGL_LIBRARIES} ${OpenCV_LIBS})
-
+# Link OpenCV and FreeGLUT to the main executable
+target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS} freeglut_static)
 
 # -----
 # TESTS
@@ -32,6 +52,6 @@ target_link_libraries(${PROJECT_NAME} ${OPENGL_LIBRARIES} ${OpenCV_LIBS})
 # Add the test executable for DataLoader
 add_executable(test_dataloader ${CMAKE_SOURCE_DIR}/tests/test_dataloader.cpp ${SOURCES})
 
-# Link OpenCV to the test executable
-target_link_libraries(test_dataloader ${OPENGL_LIBRARIES} ${OpenCV_LIBS})
+# Link OpenCV and FreeGLUT to the test executable
+target_link_libraries(test_dataloader ${OpenCV_LIBS} freeglut_static)
 # -----
