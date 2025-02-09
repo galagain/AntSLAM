@@ -6,14 +6,27 @@
 class Visualizer
 {
 public:
-    // The window is named "Image Visualizer" and is not created until showImage() is called
-    Visualizer();
+    /**
+     * @brief The window is named "Image Visualizer" and is not created until showImage() is called.
+     * @param showFPS If true, we will overlay the FPS on the image whenever showImage() is called.
+     */
+    Visualizer(bool showFPS = true);
 
-    // Displays the image in the "Image Visualizer" window
+    /**
+     * @brief Displays the image in the "Image Visualizer" window.
+     *        If the image is empty, a warning is printed and nothing is shown.
+     *        If showFPS is enabled, we overlay the instantaneous FPS on the top-left corner.
+     *
+     * @param image The cv::Mat (BGR color) image to display.
+     */
     void showImage(const cv::Mat &image);
 
 private:
-    bool isWindowCreated_;
+    bool isWindowCreated_; ///< Tracks whether the window "Image Visualizer" has been created yet.
+
+    // Added for optional FPS overlay
+    bool showFPS_;   ///< Whether to overlay FPS on the image
+    int64 lastTick_; ///< The tick count from cv::getTickCount() on the previous frame
 };
 
 #endif // VISUALIZATION_H
