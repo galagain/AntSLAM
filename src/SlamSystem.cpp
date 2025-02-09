@@ -1,19 +1,15 @@
 #include "SlamSystem.h"
 
-////////////////////////////////////////////////////////////////////////////////
 // Constructor
-////////////////////////////////////////////////////////////////////////////////
 SlamSystem::SlamSystem(const std::string &datasetImagesPath,
-                       const std::string &datasetPosesPath)
-    : dataset_images_location_(datasetImagesPath), dataset_poses_location_(datasetPosesPath), motionEstimator_(718.8560, cv::Point2d(607.1928, 185.2157)), visualizer_(), visualizer3D_(nullptr), hasGroundTruth_(false)
+                       const std::string &datasetPosesPath,
+                       bool enableVisualization)
+    : dataset_images_location_(datasetImagesPath), dataset_poses_location_(datasetPosesPath), enableVisualization_(enableVisualization), motionEstimator_(718.8560, cv::Point2d(607.1928, 185.2157)), visualizer_(), hasGroundTruth_(false), visualizer3D_(nullptr)
 {
-    // If datasetPosesPath is not empty, we'll try to load ground truth in run().
-    // Otherwise, we skip GT logic entirely.
+    // If datasetPosesPath is not empty, we might load GT in run().
+    // Otherwise, no GT is used. Visualization depends on 'enableVisualization_'.
 }
 
-////////////////////////////////////////////////////////////////////////////////
-// run()
-////////////////////////////////////////////////////////////////////////////////
 void SlamSystem::run(int argc, char **argv)
 {
     // 1) Load images
@@ -25,7 +21,7 @@ void SlamSystem::run(int argc, char **argv)
         return;
     }
 
-    // 2) If dataset_poses_location_ is not empty, attempt GT load
+    // 2) Attempt ground-truth load if not empty
     if (!dataset_poses_location_.empty())
     {
         groundTruthAll_ = dataLoader_.loadGroundPoses3D(dataset_poses_location_);
@@ -34,24 +30,20 @@ void SlamSystem::run(int argc, char **argv)
             hasGroundTruth_ = true;
             groundScales_ = loadAbsoluteScales(groundTruthAll_);
             groundTruth3D_.clear();
-            std::cout << "Ground truth loaded: " << groundTruthAll_.size() << " poses." << std::endl;
+            std::cout << "GT loaded successfully. Number of poses: " << groundTruthAll_.size() << std::endl;
         }
         else
         {
-            std::cerr << "[Warning] Could not load ground truth at "
-                      << dataset_poses_location_
-                      << ". Running without GT." << std::endl;
+            std::cerr << "[Warning] Could not load ground truth. Running without GT.\n";
             hasGroundTruth_ = false;
         }
     }
     else
     {
-        // no path => skip
-        std::cout << "[Info] No ground-truth file provided. Monocular only." << std::endl;
         hasGroundTruth_ = false;
     }
 
-    // 3) Load the first two images
+    // 3) Load first two images
     cv::Mat img1_c = dataLoader_.loadImage(images_[0]);
     cv::Mat img2_c = dataLoader_.loadImage(images_[1]);
     if (img1_c.empty() || img2_c.empty())
@@ -66,9 +58,7 @@ void SlamSystem::run(int argc, char **argv)
 
     // 4) Detect & track initial features
     featureDetector_.detectFeatures(img1, prevFeatures_);
-    featureTracker_.trackFeatures(img1, img2,
-                                  prevFeatures_, currFeatures_,
-                                  status_);
+    featureTracker_.trackFeatures(img1, img2, prevFeatures_, currFeatures_, status_);
 
     // 5) Estimate first motion
     {
@@ -86,38 +76,42 @@ void SlamSystem::run(int argc, char **argv)
         predicted3D_.push_back(cv::Point3f(px, py, pz));
     }
 
-    // 7) If we have GT, add the first pose
+    // 7) If GT is available, add the first GT pose
     if (hasGroundTruth_ && !groundTruthAll_.empty())
     {
         groundTruth3D_.push_back(groundTruthAll_[0]);
     }
 
-    // 8) Prepare for the loop
+    // 8) Prepare for main loop
     prevImage_ = img2.clone();
     prevFeatures_ = currFeatures_;
     numFrame_ = 2;
 
-    // ==========================
-    // GLUT + Visualizer3D
-    // ==========================
-    glutInit(&argc, argv);
-    glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
-    glutInitWindowSize(800, 600);
-    glutCreateWindow("3D Real-Time Visualization - Optional GT");
+    // ---------------------------
+    // Visualization Setup
+    // ---------------------------
+    if (enableVisualization_)
+    {
+        // Initialize GLUT for 3D, create window
+        glutInit(&argc, argv);
+        glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
+        glutInitWindowSize(800, 600);
+        glutCreateWindow("3D Real-Time Visualization - optional");
 
-    visualizer3D_ = new Visualizer3D(&R_f_, &t_f_,
-                                     &groundTruth3D_, // GT vector (empty if no GT)
-                                     &predicted3D_);  // predicted
-    visualizer3D_->initGL();
-    visualizer3D_->registerCallbacks();
+        // Create a 3D viewer
+        visualizer3D_ = new Visualizer3D(
+            &R_f_, &t_f_,
+            &groundTruth3D_, // might be empty if no GT
+            &predicted3D_);
+        visualizer3D_->initGL();
+        visualizer3D_->registerCallbacks();
+    }
 
     // Main loop
     clock_t startClock = clock();
     while (true)
     {
-        // If we have GT, we limit frames to min(totalFrames_, groundTruthAll_.size())
-        // If no GT, groundTruthAll_ is empty => we limit frames to totalFrames_ only
-        // (We also impose MAX_FRAME).
+        // Limit frames with or without GT
         int limit = (hasGroundTruth_) ? std::min(totalFrames_, (int)groundTruthAll_.size()) : totalFrames_;
 
         if (numFrame_ >= limit || numFrame_ >= MAX_FRAME)
@@ -125,46 +119,54 @@ void SlamSystem::run(int argc, char **argv)
 
         processOneFrame();
 
-        // Update 3D
-        glutMainLoopEvent();
-        glutPostRedisplay();
+        // Update windows if enabled
+        if (enableVisualization_)
+        {
+            glutMainLoopEvent();
+            glutPostRedisplay();
 
-        // Update 2D window
-        int key = cv::waitKey(1);
-        if (key == 27) // ESC
-            break;
+            // Update 2D window
+            int key = cv::waitKey(1);
+            if (key == 27) // ESC
+                break;
+        }
+        else
+        {
+            // If no visualization, we can do a minimal wait or no wait
+            // to prevent a tight CPU loop
+            // e.g., std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        }
     }
     clock_t endClock = clock();
     double secs = double(endClock - startClock) / CLOCKS_PER_SEC;
     std::cout << "Total time: " << secs << " s" << std::endl;
 
-    // Keep 3D window open
-    while (true)
+    // Keep 3D window open (only if we created it)
+    if (enableVisualization_ && visualizer3D_)
     {
-        glutMainLoopEvent();
-        glutPostRedisplay();
+        while (true)
+        {
+            glutMainLoopEvent();
+            glutPostRedisplay();
 
-        if (!glutGetWindow())
-            break;
+            if (!glutGetWindow())
+                break;
 
-        int k = cv::waitKey(10);
-        if (k == 27)
-            break;
+            int k = cv::waitKey(10);
+            if (k == 27) // ESC
+                break;
+        }
+
+        delete visualizer3D_;
+        visualizer3D_ = nullptr;
     }
-
-    delete visualizer3D_;
-    visualizer3D_ = nullptr;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-// processOneFrame()
-////////////////////////////////////////////////////////////////////////////////
 void SlamSystem::processOneFrame()
 {
     if (numFrame_ >= totalFrames_)
         return;
 
-    // 1) Load next image
     cv::Mat currImage_c = dataLoader_.loadImage(images_[numFrame_]);
     if (currImage_c.empty())
         return;
@@ -172,16 +174,16 @@ void SlamSystem::processOneFrame()
     cv::Mat currGray;
     cv::cvtColor(currImage_c, currGray, cv::COLOR_BGR2GRAY);
 
-    // 2) Track features
+    // Track
     featureTracker_.trackFeatures(prevImage_, currGray,
                                   prevFeatures_, currFeatures_,
                                   status_);
 
-    // 3) Estimate motion
+    // Estimate motion
     cv::Mat R, t;
     motionEstimator_.estimateMotion(prevFeatures_, currFeatures_, R, t);
 
-    // 4) If we have GT, apply scale. Else, skip scale => pure monocular
+    // If GT => scale. Otherwise, raw monocular
     if (hasGroundTruth_ && numFrame_ < (int)groundScales_.size())
     {
         double scale = groundScales_[numFrame_];
@@ -195,12 +197,12 @@ void SlamSystem::processOneFrame()
     }
     else
     {
-        // No GT => just do raw monocular
+        // No GT => no scale
         t_f_ = t_f_ + (R_f_ * t);
         R_f_ = R * R_f_;
     }
 
-    // 5) If too few features => detect again
+    // If too few features => detect new
     if (prevFeatures_.size() < MIN_NUM_FEAT)
     {
         featureDetector_.detectFeatures(prevImage_, prevFeatures_);
@@ -209,7 +211,7 @@ void SlamSystem::processOneFrame()
                                       status_);
     }
 
-    // 6) Store new predicted pose
+    // Store predicted pose
     {
         float px = float(t_f_.at<double>(0));
         float py = float(t_f_.at<double>(1));
@@ -217,16 +219,18 @@ void SlamSystem::processOneFrame()
         predicted3D_.push_back(cv::Point3f(px, py, pz));
     }
 
-    // 7) If we have GT, add it
+    // If GT => add incremental
     if (hasGroundTruth_ && numFrame_ < (int)groundTruthAll_.size())
     {
         groundTruth3D_.push_back(groundTruthAll_[numFrame_]);
     }
 
-    // 8) Show 2D image
-    visualizer_.showImage(currImage_c);
+    // Show 2D image only if visualization is enabled
+    if (enableVisualization_)
+    {
+        visualizer_.showImage(currImage_c);
+    }
 
-    // 9) Prepare next
     prevImage_ = currGray.clone();
     prevFeatures_ = currFeatures_;
 

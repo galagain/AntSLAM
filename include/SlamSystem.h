@@ -19,31 +19,34 @@
 
 /**
  * @class SlamSystem
- * @brief A class that encapsulates the VO/SLAM pipeline, with optional ground-truth usage.
+ * @brief A class encapsulating the VO/SLAM pipeline, with optional ground-truth usage
+ *        and optional visualization (2D + 3D).
  *
- * If the second parameter (posesPath) is empty, the system runs without ground truth,
- * so no scales are computed and no GT line is displayed.
+ * Usage examples:
+ *   1) SlamSystem slam("/path/to/images");                      // no GT, visualization enabled by default
+ *   2) SlamSystem slam("/path/to/images", "/path/to/poses.txt", false); // with GT but no visualization
  */
 class SlamSystem
 {
 public:
     /**
-     * @brief Constructor that can be used in two ways:
-     *        1) SlamSystem(imagesPath);               // no ground truth
-     *        2) SlamSystem(imagesPath, posesPath);    // with ground truth
+     * @brief Constructor with optional ground truth path and visualization toggle.
      *
-     * If posesPath is empty, we skip all GT-related logic.
-     *
-     * @param datasetImagesPath Path to the folder containing the images
-     * @param datasetPosesPath  Path to the ground truth file (optional).
+     * @param datasetImagesPath Path to the folder containing images.
+     * @param datasetPosesPath  Optional path to ground truth file. If empty, no GT used.
+     * @param enableVisualization Whether to show the 2D window (OpenCV) and 3D window (OpenGL).
+     *                           If false, runs headless: no UI is created.
      */
     SlamSystem(const std::string &datasetImagesPath,
-               const std::string &datasetPosesPath = "");
+               const std::string &datasetPosesPath = "",
+               bool enableVisualization = true);
 
     /**
-     * @brief run: the main function that initializes the pipeline and processes all frames.
+     * @brief run: the main function that initializes the pipeline and processes frames.
+     *        If visualization is enabled, will create the 3D window and show 2D images,
+     *        otherwise runs headless.
      *
-     * @param argc, argv: Typically forwarded to GLUT for window setup.
+     * @param argc, argv Command line arguments to pass to GLUT if needed.
      */
     void run(int argc, char **argv);
 
@@ -62,13 +65,18 @@ private:
     std::string dataset_poses_location_;
 
     // -----------------------------------------
+    // Visualization toggle
+    // -----------------------------------------
+    bool enableVisualization_; ///< If false, skip all 2D/3D displays.
+
+    // -----------------------------------------
     // Pipeline components
     // -----------------------------------------
     DataLoader dataLoader_;
     FeatureDetector featureDetector_;
     FeatureTracker featureTracker_;
     MotionEstimator motionEstimator_;
-    Visualizer visualizer_; ///< For 2D (OpenCV) display
+    Visualizer visualizer_; ///< For 2D (OpenCV) display, used only if enableVisualization_ = true
 
     // -----------------------------------------
     // Image lists and counters
