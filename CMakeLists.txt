@@ -1,4 +1,3 @@
-# Minimum required version of CMake
 cmake_minimum_required(VERSION 3.10)
 
 # Project name
@@ -36,6 +35,11 @@ else()
     message(FATAL_ERROR "OpenGL not found!")
 endif()
 
+# Add Eigen as a submodule
+set(EIGEN_DIR ${CMAKE_SOURCE_DIR}/external/eigen)
+include_directories(${EIGEN_DIR})
+message(STATUS "Eigen included from: ${EIGEN_DIR}")
+
 # Add all source files from the src directory excluding main.cpp
 file(GLOB_RECURSE SOURCES ${CMAKE_SOURCE_DIR}/src/*.cpp)
 list(REMOVE_ITEM SOURCES ${CMAKE_SOURCE_DIR}/src/main.cpp)
@@ -43,7 +47,7 @@ list(REMOVE_ITEM SOURCES ${CMAKE_SOURCE_DIR}/src/main.cpp)
 # Create the main executable
 add_executable(${PROJECT_NAME} ${SOURCES} ${CMAKE_SOURCE_DIR}/src/main.cpp)
 
-# Link OpenCV and FreeGLUT to the main executable
+# Link OpenCV, FreeGLUT, and Eigen to the main executable
 target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS} freeglut_static)
 
 # -----
@@ -52,6 +56,5 @@ target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS} freeglut_static)
 # Add the test executable for DataLoader
 add_executable(test_dataloader ${CMAKE_SOURCE_DIR}/tests/test_dataloader.cpp ${SOURCES})
 
-# Link OpenCV and FreeGLUT to the test executable
+# Link OpenCV, FreeGLUT, and Eigen to the test executable
 target_link_libraries(test_dataloader ${OpenCV_LIBS} freeglut_static)
-# -----

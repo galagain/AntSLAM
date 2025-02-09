@@ -1,0 +1,6 @@
+[submodule "external/freeglut"]
+	path = external/freeglut
+	url = https://github.com/FreeGLUTProject/freeglut.git
+[submodule "external/eigen"]
+	path = external/eigen
+	url = https://gitlab.com/libeigen/eigen.git
