@@ -21,11 +21,7 @@
 /**
  * @class SlamSystem
  * @brief A class encapsulating the VO/SLAM pipeline, with optional ground-truth usage
- *        and optional visualization (2D + 3D).
- *
- * Usage examples:
- *   1) SlamSystem slam("/path/to/images");                      // no GT, visualization enabled by default
- *   2) SlamSystem slam("/path/to/images", "/path/to/poses.txt", false); // with GT but no visualization
+ *        and optional visualization.
  */
 class SlamSystem
 {
@@ -37,10 +33,12 @@ public:
      * @param datasetPosesPath  Optional path to ground truth file. If empty, no GT used.
      * @param enableVisualization Whether to show the 2D window (OpenCV) and 3D window (OpenGL).
      *                           If false, runs headless: no UI is created.
+     * @param savePosesPath Whether to save the poses to a text file.
      */
     SlamSystem(const std::string &datasetImagesPath,
                const std::string &datasetPosesPath = "",
-               bool enableVisualization = true);
+               bool enableVisualization = true,
+               const std::string savePosesPath = "");
 
     /**
      * @brief run: the main function that initializes the pipeline and processes frames.
@@ -71,6 +69,8 @@ private:
     // -----------------------------------------
     std::string dataset_images_location_;
     std::string dataset_poses_location_;
+
+    std::string save_poses_path_;
 
     // -----------------------------------------
     // Visualization toggle

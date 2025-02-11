@@ -3,8 +3,16 @@
 // Constructor
 SlamSystem::SlamSystem(const std::string &datasetImagesPath,
                        const std::string &datasetPosesPath,
-                       bool enableVisualization)
-    : dataset_images_location_(datasetImagesPath), dataset_poses_location_(datasetPosesPath), enableVisualization_(enableVisualization), motionEstimator_(718.8560, cv::Point2d(607.1928, 185.2157)), visualizer_(), hasGroundTruth_(false), visualizer3D_(nullptr)
+                       bool enableVisualization,
+                       const std::string savePosesPath)
+    : dataset_images_location_(datasetImagesPath),
+      dataset_poses_location_(datasetPosesPath),
+      enableVisualization_(enableVisualization),
+      save_poses_path_(savePosesPath),
+      motionEstimator_(718.8560, cv::Point2d(607.1928, 185.2157)),
+      visualizer_(),
+      hasGroundTruth_(false),
+      visualizer3D_(nullptr)
 {
     // If datasetPosesPath is not empty, we might load GT in run().
     // Otherwise, no GT is used. Visualization depends on 'enableVisualization_'.
@@ -68,7 +76,10 @@ void SlamSystem::run(int argc, char **argv)
         t_f_ = t.clone();
 
         // Save the first pose
-        savePoseToFile(R_f_, t_f_);
+        if (save_poses_path_ != "")
+        {
+            savePoseToFile(R_f_, t_f_);
+        }
     }
 
     // 6) Store the first predicted pose
@@ -206,7 +217,10 @@ void SlamSystem::processOneFrame()
     }
 
     // Save the pose
-    savePoseToFile(R_f_, t_f_);
+    if (save_poses_path_ != "")
+    {
+        savePoseToFile(R_f_, t_f_);
+    }
 
     // If too few features => detect new
     if (prevFeatures_.size() < MIN_NUM_FEAT)
@@ -269,7 +283,7 @@ std::vector<double> SlamSystem::loadAbsoluteScales(const std::vector<cv::Point3f
 ////////////////////////////////////////////////////////////////////////////////
 void SlamSystem::savePoseToFile(const cv::Mat &R, const cv::Mat &t)
 {
-    std::ofstream file("poses.txt", std::ios::app);
+    std::ofstream file(save_poses_path_, std::ios::app);
     if (!file.is_open())
     {
         std::cerr << "Error: Unable to open the pose file." << std::endl;
