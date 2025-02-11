@@ -66,6 +66,9 @@ void SlamSystem::run(int argc, char **argv)
         motionEstimator_.estimateMotion(prevFeatures_, currFeatures_, R, t);
         R_f_ = R.clone();
         t_f_ = t.clone();
+
+        // Save the first pose
+        savePoseToFile(R_f_, t_f_);
     }
 
     // 6) Store the first predicted pose
@@ -202,6 +205,9 @@ void SlamSystem::processOneFrame()
         R_f_ = R * R_f_;
     }
 
+    // Save the pose
+    savePoseToFile(R_f_, t_f_);
+
     // If too few features => detect new
     if (prevFeatures_.size() < MIN_NUM_FEAT)
     {
@@ -256,4 +262,24 @@ std::vector<double> SlamSystem::loadAbsoluteScales(const std::vector<cv::Point3f
         scales.push_back(dist);
     }
     return scales;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// savePoseToFile()
+////////////////////////////////////////////////////////////////////////////////
+void SlamSystem::savePoseToFile(const cv::Mat &R, const cv::Mat &t)
+{
+    std::ofstream file("poses.txt", std::ios::app);
+    if (!file.is_open())
+    {
+        std::cerr << "Error: Unable to open the pose file." << std::endl;
+        return;
+    }
+
+    // Writing in KITTI format: R11 R12 R13 t1 R21 R22 R23 t2 R31 R32 R33 t3
+    file << R.at<double>(0, 0) << " " << R.at<double>(0, 1) << " " << R.at<double>(0, 2) << " " << t.at<double>(0) << " "
+         << R.at<double>(1, 0) << " " << R.at<double>(1, 1) << " " << R.at<double>(1, 2) << " " << t.at<double>(1) << " "
+         << R.at<double>(2, 0) << " " << R.at<double>(2, 1) << " " << R.at<double>(2, 2) << " " << t.at<double>(2) << "\n";
+
+    file.close();
 }

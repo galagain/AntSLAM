@@ -16,6 +16,7 @@
 #include "MotionEstimator.h"
 #include "Visualization.h"
 #include "Visualizer3D.h"
+#include "UtilsTransform.h"
 
 /**
  * @class SlamSystem
@@ -49,6 +50,13 @@ public:
      * @param argc, argv Command line arguments to pass to GLUT if needed.
      */
     void run(int argc, char **argv);
+
+    /**
+     * @brief savePoseToFile: save the current pose to a text file.
+     *
+     * @param R, t Rotation and translation matrices to save.
+     */
+    void savePoseToFile(const cv::Mat &R, const cv::Mat &t);
 
 private:
     // -----------------------------------------
