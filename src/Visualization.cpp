@@ -1,75 +1,85 @@
+/// @file Visualization.cpp
+/// @brief Implements the Visualizer class for displaying images with optional FPS overlay.
+
 #include "Visualization.h"
 #include <iostream>
 
 /**
  * @brief Constructs the Visualizer.
- * By default, it does not show FPS unless 'showFPS' is set to true.
  *
- * @param showFPS If true, overlays the FPS text on the displayed image.
+ * By default, it does not display FPS unless `showFPS` is set to `true`.
+ * The visualization window is not created immediately; it will be initialized
+ * when the first image is displayed.
+ *
+ * @param showFPS If `true`, overlays the FPS text on the displayed image.
  */
 Visualizer::Visualizer(bool showFPS)
     : isWindowCreated_(false),
       showFPS_(showFPS),
       lastTick_(0)
 {
-    // By default, the window is not created here.
-    // It will be created when the first image is shown.
 }
 
+/**
+ * @brief Displays an image in the visualization window.
+ *
+ * If the window does not exist, it is created with the size of the first received image.
+ * If FPS overlay is enabled, it calculates and displays the FPS on top of the image.
+ *
+ * @param image The input image to be displayed.
+ */
 void Visualizer::showImage(const cv::Mat &image)
 {
-    // If the provided image is empty, log a warning and do nothing.
+    // Check if the input image is empty
     if (image.empty())
     {
         std::cerr << "[Warning] showImage() received an empty image." << std::endl;
         return;
     }
 
-    // Create the window only once, at the size of the first image received.
+    // Create the window on the first call
     if (!isWindowCreated_)
     {
         cv::namedWindow("Image Visualizer", cv::WINDOW_NORMAL);
         cv::resizeWindow("Image Visualizer", image.cols, image.rows);
         isWindowCreated_ = true;
 
-        // Initialize lastTick_ so we can measure FPS on subsequent calls
+        // Initialize lastTick_ for FPS calculation
         lastTick_ = cv::getTickCount();
     }
 
-    // We'll show the original image, possibly with FPS text drawn on top.
-    // If you want to avoid modifying 'image', do a clone() here:
-    cv::Mat displayImage = image; // or => image.clone();
+    // Create a copy of the input image if necessary
+    cv::Mat displayImage = image; // If modifications are needed, use `image.clone()`
 
-    // If showFPS is enabled, compute the time since last call and overlay the FPS.
+    // Overlay FPS if enabled
     if (showFPS_)
     {
         int64 currentTick = cv::getTickCount();
         double freq = cv::getTickFrequency();
 
-        // Compute elapsed seconds between this frame and last frame
-        double elapsedSec = double(currentTick - lastTick_) / freq;
-        lastTick_ = currentTick; // update for next time
+        // Compute elapsed time between frames
+        double elapsedSec = static_cast<double>(currentTick - lastTick_) / freq;
+        lastTick_ = currentTick; // Update timestamp for next frame
 
-        // Avoid division by zero
+        // Compute FPS, ensuring no division by zero
         double fps = (elapsedSec > 0.0) ? (1.0 / elapsedSec) : 0.0;
 
-        // Format the FPS string
+        // Format FPS display text
         std::string fpsText = cv::format("FPS: %.2f", fps);
 
-        // We'll put the text in the top-left corner (X=20, Y=30),
-        // using green color and a scale of 1.0
+        // Draw FPS text on the top-left corner
         cv::putText(
             displayImage, fpsText,
-            cv::Point(20, 30),
-            cv::FONT_HERSHEY_SIMPLEX,
-            1.0,
-            cv::Scalar(0, 255, 0), // B=0, G=255, R=0 => green
-            2);
+            cv::Point(20, 30),        // Position (x=20, y=30)
+            cv::FONT_HERSHEY_SIMPLEX, // Font style
+            1.0,                      // Font scale
+            cv::Scalar(0, 255, 0),    // Green text color
+            2);                       // Thickness
     }
 
-    // Display the image
+    // Show the image in the visualization window
     cv::imshow("Image Visualizer", displayImage);
 
-    // Wait briefly for the window to update
+    // Wait a short time for the window to update
     cv::waitKey(1);
 }

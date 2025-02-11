@@ -1,3 +1,6 @@
+/// @file Visualizer3D.h
+/// @brief Defines the Visualizer3D class for real-time 3D visualization of visual odometry (VO) data.
+
 #ifndef VISUALIZER3D_H
 #define VISUALIZER3D_H
 
@@ -7,23 +10,21 @@
 
 /**
  * @class Visualizer3D
+ * @brief Handles real-time 3D visualization of visual odometry (VO) data using OpenGL (via FreeGLUT).
  *
- * @brief A class that handles real-time 3D visualization of VO (Visual Odometry) data
- *        using OpenGL (via FreeGLUT).
+ * The visualizer displays:
+ *   - A global axis for reference.
+ *   - The ground-truth trajectory (if provided).
+ *   - The predicted visual odometry (VO) trajectory.
  *
- * It displays:
- *   - A global axis,
- *   - The ground-truth trajectory (if provided),
- *   - The predicted (VO) trajectory.
- *
- * It also supports user interaction for camera rotation (via mouse drag)
- * and zoom (mouse wheel).
+ * It also supports user interaction, allowing camera rotation (via mouse drag)
+ * and zooming (via mouse wheel).
  */
 class Visualizer3D
 {
 public:
     /**
-     * @brief Constructs the Visualizer3D with pointers to rotation, translation, and two trajectories.
+     * @brief Constructs the Visualizer3D object.
      *
      * @param R_f         Pointer to a CV_64F 3x3 matrix representing the camera rotation.
      * @param t_f         Pointer to a CV_64F 3x1 matrix representing the camera translation.
@@ -36,94 +37,119 @@ public:
                  std::vector<cv::Point3f> *predicted);
 
     /**
-     * @brief Performs basic OpenGL initialization, such as setting the clear color and enabling depth testing.
+     * @brief Initializes OpenGL settings such as background color, depth testing, and lighting.
      */
     void initGL();
 
     /**
-     * @brief Registers all the needed GLUT callbacks for displaying, reshaping, and handling mouse input.
+     * @brief Registers all required GLUT callbacks for handling display, reshaping, and mouse input.
      *
-     * This must be called after creating the GLUT window (e.g., glutCreateWindow).
+     * This method should be called after the GLUT window is created (e.g., `glutCreateWindow`).
      */
     void registerCallbacks();
 
 private:
     // ------------------ Static callbacks required by GLUT ------------------
-    // GLUT must call static or free functions, so we store a static pointer to the instance.
+    // GLUT requires static or free functions, so we store a static pointer to the active instance.
 
     /**
-     * @brief Static display callback that forwards to the instance's displayCallback().
+     * @brief Static display callback forwarding to the instance's displayCallback().
      */
     static void s_displayCallback();
 
     /**
-     * @brief Static reshape callback that forwards to the instance's reshapeCallback().
+     * @brief Static reshape callback forwarding to the instance's reshapeCallback().
+     * @param w New window width.
+     * @param h New window height.
      */
     static void s_reshapeCallback(int w, int h);
 
     /**
-     * @brief Static mouse callback that forwards to the instance's mouseCallback().
+     * @brief Static mouse button callback forwarding to the instance's mouseCallback().
+     * @param button Mouse button (e.g., left, right, scroll).
+     * @param state Button state (pressed/released).
+     * @param x Mouse cursor x-coordinate.
+     * @param y Mouse cursor y-coordinate.
      */
     static void s_mouseCallback(int button, int state, int x, int y);
 
     /**
-     * @brief Static motion callback that forwards to the instance's motionCallback().
+     * @brief Static mouse motion callback forwarding to the instance's motionCallback().
+     * @param x Mouse cursor x-coordinate during movement.
+     * @param y Mouse cursor y-coordinate during movement.
      */
     static void s_motionCallback(int x, int y);
 
-    // ------------------ Actual instance methods ------------------
+    // ------------------ Instance methods ------------------
 
     /**
-     * @brief The main display routine, drawing axes and trajectories.
+     * @brief Main rendering function. Draws axes, trajectories, and updates the viewport.
      */
     void displayCallback();
 
     /**
-     * @brief Handles window resize events to adjust the viewport and projection.
+     * @brief Adjusts the viewport and projection settings when the window is resized.
+     * @param w New window width.
+     * @param h New window height.
      */
     void reshapeCallback(int w, int h);
 
     /**
-     * @brief Handles mouse button presses, including scroll wheel.
+     * @brief Handles mouse button press events (including zoom via scroll wheel).
+     * @param button Mouse button identifier.
+     * @param state Pressed or released state.
+     * @param x Cursor x-coordinate at the moment of the event.
+     * @param y Cursor y-coordinate at the moment of the event.
      */
     void mouseCallback(int button, int state, int x, int y);
 
     /**
-     * @brief Handles mouse movement while a button is pressed (drag).
+     * @brief Handles mouse movement when a button is pressed, used for rotating the view.
+     * @param x Current mouse x-coordinate.
+     * @param y Current mouse y-coordinate.
      */
     void motionCallback(int x, int y);
 
     /**
-     * @brief Draws a simple 3D axis (X = red, Y = green, Z = blue).
+     * @brief Draws a simple 3D coordinate axis system (X = red, Y = green, Z = blue).
+     * @param length Length of each axis line.
      */
     void drawAxis(float length = 1.0f);
 
     /**
-     * @brief Draws a 3D trajectory as a connected line plus points.
+     * @brief Draws a trajectory as a connected series of points in 3D space.
+     * @param traj The trajectory points to be drawn.
+     * @param r Red color component (0-1).
+     * @param g Green color component (0-1).
+     * @param b Blue color component (0-1).
      */
     void drawTrajectory(const std::vector<cv::Point3f> &traj, float r, float g, float b);
 
 private:
-    /// A static pointer referencing the active Visualizer3D instance.
+    /// A static pointer to the currently active Visualizer3D instance, required for GLUT callbacks.
     static Visualizer3D *s_instance;
 
-    /// Pointer to rotation matrix (3x3).
+    /// Pointer to the rotation matrix (3x3) representing the camera's current orientation.
     cv::Mat *m_R_f;
-    /// Pointer to translation vector (3x1).
+
+    /// Pointer to the translation vector (3x1) representing the camera's current position.
     cv::Mat *m_t_f;
-    /// Pointer to ground-truth trajectory vector.
+
+    /// Pointer to the ground-truth 3D trajectory (if available).
     std::vector<cv::Point3f> *m_groundTruth;
-    /// Pointer to predicted trajectory vector.
+
+    /// Pointer to the predicted 3D trajectory.
     std::vector<cv::Point3f> *m_predicted;
 
     // Camera interaction parameters
-    float m_camAngleX = 20.f;   ///< Current rotation around X-axis (degrees)
-    float m_camAngleY = 30.f;   ///< Current rotation around Y-axis (degrees)
-    float m_camDistance = 50.f; ///< Distance from origin (zoom factor)
 
-    bool m_leftButtonDown = false; ///< True if left mouse button is currently pressed.
-    int m_lastMouseX = 0;          ///< Last mouse X position (for dragging).
-    int m_lastMouseY = 0;          ///< Last mouse Y position (for dragging).
+    float m_camAngleX = 20.f;   ///< Current rotation angle around the X-axis (degrees).
+    float m_camAngleY = 30.f;   ///< Current rotation angle around the Y-axis (degrees).
+    float m_camDistance = 50.f; ///< Distance from the origin (zoom level).
+
+    bool m_leftButtonDown = false; ///< True if the left mouse button is currently pressed.
+    int m_lastMouseX = 0;          ///< Last recorded X position of the mouse (for drag rotation).
+    int m_lastMouseY = 0;          ///< Last recorded Y position of the mouse (for drag rotation).
 };
 
 #endif // VISUALIZER3D_H
